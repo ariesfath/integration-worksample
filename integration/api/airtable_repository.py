@@ -42,7 +42,7 @@ class AirtableRepository:
         date_filter = "IS_AFTER({{Record Last Modified DateTime}}, DATETIME_PARSE('{date_str}'))".format(
             date_str=last_update.strftime(AIRTABLE_DATE_FORMAT)
         )
-        is_processed_filter = "{Diff in Req'd vs Ship Date}=''"
+        is_processed_filter = "{Carrier Pickup}=''"
         formula = "AND({date_filter}, {is_processed_filter})".format(
             date_filter=date_filter,
             is_processed_filter=is_processed_filter
@@ -56,6 +56,13 @@ class AirtableRepository:
         """Update Diff in Req'd vs Ship Date in Airtable shipment"""
         update_data = {
             "Diff in Req'd vs Ship Date": str(diff_kpi)
+        }
+        result = self.shipments.update_by_field("PO", po_number, update_data)
+        return result
+
+    def update_carrier_pickup_time(self, po_number: str, pickup_time: datetime.datetime):
+        update_data = {
+            "Carrier Pickup": pickup_time.strftime(AIRTABLE_DATETIME_FORMAT)
         }
         result = self.shipments.update_by_field("PO", po_number, update_data)
         return result

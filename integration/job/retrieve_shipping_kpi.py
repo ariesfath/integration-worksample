@@ -7,7 +7,7 @@ from ..logger import JobLogger
 
 class RetrieveShippingKpiJobConfig:
     def __init__(self, airtable_base_id: str, airtable_token: str,
-            last_run_ts: int):
+                 last_run_ts: int):
         self.airtable_base_id = airtable_base_id
         self.airtable_token = airtable_token
         self.last_run = datetime.datetime.fromtimestamp(last_run_ts)
@@ -29,7 +29,7 @@ class RetrieveShippingKpiJobConfig:
         config_data = {
             "airtable_base_id": config.airtable_base_id,
             "airtable_token": config.airtable_token,
-            "last_run": config.last_run.timestamp
+            "last_run": int(config.last_run.timestamp())
         }
         with open(filepath, 'w') as config_file:
             json.dump(config_data, config_file)
@@ -52,24 +52,28 @@ class RetrieveShippingKpiJob:
         JobLogger.debug("Fetching unprocessed shipment data from Airtable since {last_run}...".format(
             last_run=last_run
         ))
-        results = self.repository.get_unprocessed_shipments(last_run, 1)
+        results = self.repository.get_unprocessed_shipments(last_run, 5)
         updated_po_numbers = list()
         for page in results:
             for record in page:
                 po_number = record['fields']['PO']
                 tracking_number = record['fields']['Tracking Number']
-                shipment_data = self.shipit.get_shipment_status(tracking_number)
-                delivery_time = shipment_data.get_delivery_time()
-                if not delivery_time:
+                try:
+                    shipment_data = self.shipit.get_shipment_status(tracking_number)
+                    pickup_time = shipment_data.get_carrier_pickup_time()
+                except Exception as e:  # TODO: Use more specific exception
+                    JobLogger.error(str(e))
                     continue
 
-                JobLogger.debug("PO {po_number} has been delivered on {delivery_time}".format(
+                if not pickup_time:
+                    continue
+
+                JobLogger.debug("PO {po_number} has been picked up on {pickup_time}".format(
                     po_number=po_number,
-                    delivery_time=delivery_time
+                    pickup_time=pickup_time
                 ))
-                po: AirtablePurchaseOrder = AirtablePurchaseOrder.parse_api_response(record)
-                diff_kpi = po.calculate_diff_kpi(delivery_time)
-                self.repository.update_shipment_kpi(po_number, diff_kpi)
+
+                self.repository.update_carrier_pickup_time(po_number, pickup_time)
                 updated_po_numbers.append(po_number)
         JobLogger.debug("Successfully processed {po_ct} shipment status(es)".format(
             po_ct=len(updated_po_numbers)

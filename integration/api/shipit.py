@@ -21,13 +21,31 @@ class ShipItShipmentStatus:
         self.tracking_number = tracking_number
         self.activities = activities
 
+    def parse_datetime_str(self, datetime_str) -> datetime.datetime:
+        datetime_str = datetime_str.replace("Z", "+00:00")
+        return datetime.datetime.fromisoformat(datetime_str)
+
     def get_delivery_time(self) -> datetime.datetime:
         for activity in self.activities:
             if activity.get('details') == "Delivered":
                 # Always deal with UTC to avoid headache
                 date_str = activity.get("timestamp")
-                date_str = date_str.replace("Z", "+00:00")
-                return datetime.datetime.fromisoformat(date_str)
+                return self.parse_datetime_str(date_str)
+
+    def get_pickup_event_name(self):
+        provider = get_shipping_provider(self.tracking_number)
+        if provider == ShippingProvider.UPS:
+            return "Origin scan"
+        if provider == ShippingProvider.FEDEX:
+            return "Picked up"
+
+    def get_carrier_pickup_time(self) -> datetime.datetime:
+        event_name = self.get_pickup_event_name()
+        for activity in self.activities:
+            if activity.get('details') == event_name:
+                # Always deal with UTC to avoid headache
+                date_str = activity.get("timestamp")
+                return self.parse_datetime_str(date_str)
 
     @classmethod
     def parse_api_response(cls, api_response):
