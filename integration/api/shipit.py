@@ -7,6 +7,14 @@ class ShippingProvider:
     FEDEX = 'fedex'
 
 
+def get_shipping_provider(tracking_number):
+    if tracking_number[:2] == '1Z':
+        return ShippingProvider.UPS
+    
+    elif len(tracking_number) == 12 and tracking_number.isnumeric():
+        return ShippingProvider.FEDEX
+
+
 class ShipItShipmentStatus:
     """Model class to parse ShipIt shipment status response"""
     def __init__(self, tracking_number: str, activities: list):
@@ -37,21 +45,15 @@ class ShipIt:
     
     BASE_URL = "http://shipit-api.herokuapp.com/api/carriers"
 
-    def _detect_provider(self, tracking_number: str):
-        if tracking_number[:2] == '1Z':
-            return ShippingProvider.UPS
-        
-        elif len(tracking_number) == 12 and tracking_number.isnumeric():
-            return ShippingProvider.FEDEX
-
     def get_shipment_status(self, tracking_number: str) -> ShipItShipmentStatus:
         """Get shipment status based on a tracking number.
         Will try to detect shipping provider based on the tracking number format.
         Return ShipItShipmentStatus object, otherwise will raise Exception on failure.
         """
-        provider = self._detect_provider(tracking_number)
+        provider = get_shipping_provider(tracking_number)
         if not provider:
-            raise Exception("Unknown tracking number format")
+            err_msg = "Unknown tracking number format: {tracking_number}".format(tracking_number=tracking_number)
+            raise Exception(err_msg)
 
         url = "{base_url}/{provider}/{tracking_number}".format(
             base_url=self.BASE_URL,
