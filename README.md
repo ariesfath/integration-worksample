@@ -6,6 +6,7 @@ This project is for a proof of concept work sample for our integrations team.
 ## Instructions
 ### How to Run
 1. Copy `data/job_config.json.example` into `data/job_config.json` and fill it with your Airtable base ID and token.
+   You can configure how many tracking number will processed at a time by modifying the `batch_process_ct` value in the config file.
 2. Install the python dependencies. It is recommended to run it within [virtual env](https://pypi.org/project/virtualenv/)
     ```
     # pip install -r requirements.py
