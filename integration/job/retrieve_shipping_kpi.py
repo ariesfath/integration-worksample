@@ -5,12 +5,15 @@ from ..api.shipit import ShipIt
 from ..logger import JobLogger
 
 
+DEFAULT_BATCH_PROCESS_CT = 20
+
 class RetrieveShippingKpiJobConfig:
     def __init__(self, airtable_base_id: str, airtable_token: str,
-                 last_run_ts: int):
+                 last_run_ts: int, batch_process_ct: int):
         self.airtable_base_id = airtable_base_id
         self.airtable_token = airtable_token
         self.last_run = datetime.datetime.fromtimestamp(last_run_ts)
+        self.batch_process_ct = batch_process_ct
 
     @classmethod
     def load_from_file(self, filepath):
@@ -20,7 +23,8 @@ class RetrieveShippingKpiJobConfig:
             config = RetrieveShippingKpiJobConfig(
                 airtable_base_id=config_data.get('airtable_base_id'),
                 airtable_token=config_data.get('airtable_token'),
-                last_run_ts=config_data.get('last_run', 0)
+                last_run_ts=config_data.get('last_run', 0),
+                batch_process_ct=config_data.get('batch_process_ct', DEFAULT_BATCH_PROCESS_CT)
             )
         return config
 
@@ -49,10 +53,11 @@ class RetrieveShippingKpiJob:
     def execute(self, current_time=None):
         current_time = current_time or datetime.datetime.now()
         last_run = self.config.last_run
+        batch_process_ct = self.config.batch_process_ct
         JobLogger.debug("Fetching unprocessed shipment data from Airtable since {last_run}...".format(
             last_run=last_run
         ))
-        results = self.repository.get_unprocessed_shipments(last_run, 5)
+        results = self.repository.get_unprocessed_shipments(last_run, batch_process_ct)
         updated_po_numbers = list()
         for page in results:
             for record in page:
