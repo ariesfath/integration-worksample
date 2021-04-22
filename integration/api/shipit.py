@@ -8,6 +8,12 @@ class ShippingProvider:
 
 
 def get_shipping_provider(tracking_number):
+    """Get shipping provider based on tracking number format.
+    In case of multiple tracking numbers, only check the first one.
+    """
+    tracking_numbers = tracking_number.split(',')
+    tracking_number = tracking_numbers[0]
+
     if tracking_number[:2] == '1Z':
         return ShippingProvider.UPS
     
