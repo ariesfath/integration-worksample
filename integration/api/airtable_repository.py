@@ -1,9 +1,18 @@
 import airtable
 import datetime
+import pytz
 
 
 AIRTABLE_DATE_FORMAT = "%m/%d/%Y"
 AIRTABLE_DATETIME_FORMAT = "%m/%d/%Y %H:%M"
+
+
+def to_airtable_datetime(date_obj: datetime.datetime) -> datetime.datetime:
+    """Convert UTC datetime into EST datetime to be stored in Airtable"""
+    est_tzinfo = pytz.timezone("EST")
+    est_time = date_obj.astimezone(est_tzinfo)
+    return est_time
+
 
 class AirtablePurchaseOrder:
     """Model class to parse PO shipment data from Airtable"""
@@ -61,8 +70,9 @@ class AirtableRepository:
         return result
 
     def update_carrier_pickup_time(self, po_number: str, pickup_time: datetime.datetime):
+        est_time = to_airtable_datetime(pickup_time)
         update_data = {
-            "Carrier Pickup": pickup_time.strftime(AIRTABLE_DATETIME_FORMAT)
+            "Carrier Pickup": est_time.strftime(AIRTABLE_DATETIME_FORMAT)
         }
         result = self.shipments.update_by_field("PO", po_number, update_data)
         return result
